@@ -9,7 +9,6 @@ export default function useDynamicFetch<T>(initialUrl: string) {
   useEffect(() => {
 
     const fetchData = async () => {
-      console.log('FETCH DATA CALLED')
       setLoading(true);
       try {
         const response = await fetch(url);
