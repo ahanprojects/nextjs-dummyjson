@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import { FaStar } from "react-icons/fa";
 import { GoDotFill } from "react-icons/go";
 import { FaAngleRight } from "react-icons/fa6";
@@ -7,28 +7,7 @@ import Link from "next/link";
 import { MdDelete, MdEdit } from "react-icons/md";
 import { useEffect, useRef, useState } from "react";
 import Loader from "@/app/components/Loader";
-
-type Product = {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  discountPercentage: number;
-  rating: number;
-  stock: number;
-  brand: string;
-  category: string;
-  thumbnail: string;
-  images: string[];
-};
-
-async function getProduct(id: string): Promise<Product> {
-  const res = await fetch(`https://dummyjson.com/products/${id}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch data");
-  }
-  return res.json();
-}
+import { Product } from "@/app/types/product";
 
 export default function ProductDetailPage({
   params,
@@ -54,6 +33,8 @@ export default function ProductDetailPage({
 
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  const router = useRouter()
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -75,11 +56,17 @@ export default function ProductDetailPage({
     fetchData();
   }, []);
 
-  function handleDelete() {
-    fetch(`https://dummyjson.com/products/${params.id}`, {
-      method: 'DELETE',
-    })
-    .then(res => res.json()).then(console.log)
+  async function handleDelete() {
+    try {
+      const response = await fetch(`https://dummyjson.com/products/${params.id}`, {
+        method: 'DELETE',
+      });
+      router.push('/products')
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      dialogRef.current?.close()
+    }
   }
 
   return (
@@ -127,8 +114,8 @@ export default function ProductDetailPage({
               </div>
               <div className="flex gap-2">
                 {images.length > 0 &&
-                  images.map((src) => (
-                    <div className="flex-1 overflow-hidden">
+                  images.map((src, i) => (
+                    <div className="flex-1 overflow-hidden" key={i}>
                       <img
                         src={src}
                         alt={src}

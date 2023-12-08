@@ -30,7 +30,6 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('')
   const [categories, setCategories] = useState([])
   const [category, setCategory] = useState('all')
-  const [page, setPage] = useState(1)
 
   const { data, loading, error, updateUrl }  = useDynamicFetch<ProductResponse>(DOMAIN + FILTER);
   
@@ -59,12 +58,6 @@ export default function ProductsPage() {
     setCategory('all')
     updateUrl(`${DOMAIN}/search${FILTER}&q=${search}`);
   };
-
-  async function handleSwitchPage(isNext: boolean) {
-    const multiplier = isNext == true ? 1 : -1
-    setPage(prev => prev + multiplier)
-    const skip = (data?.skip ?? 0) + SKIP * (page - 1) * multiplier
-  }
 
   return (
     <div className="min-h-screen space-y-12 py-12 px-8">
@@ -108,15 +101,6 @@ export default function ProductsPage() {
         <Loader />
       ) : (
         <div>
-          <div className="flex justify-end gap-3 pb-2 items-center">
-            <button className="bg-gray-100 p-2 rounded-lg">
-              <FaAngleLeft className='text-gray-700' />
-            </button>
-            <p className="font-medium">12</p>
-            <button className="bg-gray-100 p-2 rounded-lg">
-              <FaAngleRight  className='text-gray-700' />
-            </button>
-          </div>
           <div className="rounded-lg overflow-hidden border-2 border-gray-300">
             <table className=" w-full border-collapse text-left">
               <thead>

@@ -1,51 +1,31 @@
 "use client";
 
-import { z } from "zod";
-import { ChangeEvent, useState, useEffect, useRef } from "react";
+import { ChangeEvent, useState, useEffect, useRef, useTransition } from "react";
 import addProduct from "./actions";
-import { useFormState } from "react-dom";
 import { BiImageAdd } from "react-icons/bi";
+import ProductSchema from "@/app/schemas/productSchema";
+import Loader from "@/app/components/Loader";
+import { redirect, usePathname } from "next/navigation";
+import Link from "next/link";
+import { Product } from "@/app/types/product";
 
-const isImage = (fileName: string): boolean => {
-  const imageExtensions = ["jpg", "jpeg", "png", "gif"];
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  return !!extension && imageExtensions.includes(extension);
-};
-
-const ProductSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, { message: "Nama produk tidak boleh kosong" }),
-  description: z.string().min(1, { message: "Deskripsi tidak boleh kosong" }),
-  price: z.number().positive({ message: "Harga harus berupa angka positif" }).min(100, { message: "Harga minimal 100" }),
-  discountPercentage: z.number().min(0, {
-    message: "Diskon harus antara 0 dan 100",
-  }).max(100, {
-    message: "Diskon harus antara 0 dan 100",
-  }),
-  rating: z.number().min(1, { message: "Rating harus antara 1 dan 5" }).max(5, { message: "Rating harus antara 1 dan 5" }),
-  stock: z
-    .number()
-    .int()
-    .min(1, { message: "Stok minimal 1 barang" }),
-  brand: z.string().min(1, { message: "Merek tidak boleh kosong" }),
-  category: z.string().min(1, { message: "Kategori tidak boleh kosong" }),
-  thumbnail: z.string().refine((data) => isImage(data), {
-    message: "Foto utama wajib diisi",
-  }),
-  images: z.array(
-    z.string().refine((data) => isImage(data), {
-      message: "Foto depan, samping, dan belakang wajib diisi",
-    })
-  ),
-});
+type ProductForm = {
+  title: string,
+    description: string,
+    price: string,
+    discountPercentage: string,
+    stock: string,
+    brand: string,
+    category: string,
+    rating: string,
+    thumbnail: string,
+    images: string[]
+}
 
 export default function NewProductPage() {
-  const [state, formAction] = useFormState(addProduct, {
-    error: "",
-    success: true,
-  });
-
-  const [formData, setFormData] = useState({
+  const [isPending, startTransition] = useTransition()
+  
+  const [formData, setFormData] = useState<ProductForm>({
     title: "",
     description: "",
     price: "",
@@ -54,16 +34,13 @@ export default function NewProductPage() {
     brand: "",
     category: "",
     rating: "",
+    thumbnail: "",
+    images: ['', '', '']
   });
 
   const [categories, setCategories] = useState([]);
-
-  const [img1, setImg1] = useState<File | null>(null);
-  const [img2, setImg2] = useState<File | null>(null);
-  const [img3, setImg3] = useState<File | null>(null);
-  const [img4, setImg4] = useState<File | null>(null);
-
-  const [errors, setErrors] = useState({
+  
+  const noErrors = {
     title: "",
     description: "",
     price: "",
@@ -74,9 +51,12 @@ export default function NewProductPage() {
     rating: "",
     thumbnail: "",
     images: ""
-  });
-
+  }
+  const [errors, setErrors] = useState(noErrors);
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  const path = usePathname()
+  const id: string | null = path.endsWith('edit') ? path.split("/")[2] : null
 
   // Get categories
   useEffect(() => {
@@ -88,6 +68,36 @@ export default function NewProductPage() {
     fetchCategories();
   }, []);
 
+  // Get Initial Data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(
+          `https://dummyjson.com/products/${id}`
+        );
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const r: Product = await response.json();
+        setFormData({ 
+          title: r.title,
+          description: r.description,
+          price: r.price.toString(),
+          discountPercentage: r.discountPercentage.toString(),
+          rating: r.rating.toString(),
+          stock: r.stock.toString(),
+          brand: r.brand,
+          category: r.category,
+          thumbnail: r.thumbnail,
+          images: r.images,
+         })
+      } catch (error) {
+        
+      } 
+    };
+    fetchData();
+  }, []);
+
   function handleInputChange(
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
@@ -97,25 +107,31 @@ export default function NewProductPage() {
     setErrors({ ...errors, [name]: "" });
   }
 
+  function handleImageUpload(src: string, index: number) {
+    if (index == -1) {
+      setFormData({...formData, thumbnail: src})
+      return
+    }
+    const images = [...formData.images]
+    images[index] = src
+
+    setFormData({...formData, images: images})
+  }
+
   function handleSubmit() {
     // Convert strings into numbers, add images
     const data = {
       ...formData,
-      price: formData.price.length == 0 ? -1 : Number(formData.price),
-      discountPercentage: formData.discountPercentage.length == 0 ? -1 : Number(formData.discountPercentage),
-      rating: formData.rating.length == 0 ? -1 : Number(formData.rating),
-      stock: formData.stock.length == 0 ? -1 : Number(formData.stock),
-      thumbnail: img1?.name,
-      images: [img2?.name, img3?.name, img4?.name],
+      price: formData.price === '' ? -1 : Number(formData.price),
+      discountPercentage: formData.discountPercentage === '' ? -1 : Number(formData.discountPercentage),
+      rating: formData.rating === '' ? -1 : Number(formData.rating),
+      stock: formData.stock === '' ? -1 : Number(formData.stock),
     };
-
-    console.log('DATA ')
-    console.log(data)
 
     const validation = ProductSchema.safeParse(data);
 
     if (!validation.success) {
-      const newErrors: any = {};
+      const newErrors: any = {...noErrors};
       console.error("Validation errors:");
       validation.error.errors.forEach((err) => {
         const field = err.path[0];
@@ -127,37 +143,55 @@ export default function NewProductPage() {
     }
 
     // Reset Errors
-    setErrors({} as any)
+    setErrors({...noErrors})
 
-    // Submit
     dialogRef.current?.showModal();
   }
 
   function submitForm() {
     console.log('submit')
+    const data: Product = {
+      ...formData,
+      price: Number(formData.price),
+      discountPercentage: Number(formData.discountPercentage),
+      rating: Number(formData.rating),
+      stock: Number(formData.stock),
+    };
+
+    startTransition(async () => { 
+     const response = await addProduct(data, id) 
+     if (response.success) {
+      redirect('/products')
+     }
+     dialogRef.current?.close()
+    })
   }
 
   return (
     <>
       {/* Dialog */}
       <dialog
-        className="bg-white shadow-lg p-8 rounded-lg space-y-4"
+        className="bg-white shadow-lg p-8 rounded-lg"
         ref={dialogRef}>
-        <h3 className="text-lg font-semibold">Tambah Produk</h3>
-        <p className="pb-4">Anda yakin akan menambah produk?</p>
-        <div className="flex gap-4 justify-end">
-          <button
-            onClick={() => {
-              dialogRef.current?.close();
-            }}>
-            Batal
-          </button>
-          <button onClick={submitForm}>OK</button>
+        { isPending ? <Loader /> :
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">{id ? 'Ubah' : 'Tambah'} Produk</h3>
+          <p className="pb-4">Anda yakin akan {id ? 'mengubah' : 'menambah'} produk?</p>
+          <div className="flex gap-4 justify-end">
+            <button
+              onClick={() => {
+                dialogRef.current?.close();
+              }}>
+              Batal
+            </button>
+            <button onClick={submitForm}>OK</button>
+          </div>
         </div>
+         }
       </dialog>
       {/* Form */}
       <form className="py-8 px-12 space-y-8">
-        <h1 className="py-3 text-2xl font-bold">Tambah Produk</h1>
+        <h1 className="py-3 text-2xl font-bold">{id ? 'Ubah' : 'Tambah'} Produk</h1>
         <p className="p-4 bg-blue-100 rounded-lg mb-8 text-sm">
           Pastikan produk Anda sudah sesuai dengan syarat dan ketentuan
           Warungpedia. Warungpedia menghimbau seller untuk menjual produk dengan
@@ -184,24 +218,15 @@ export default function NewProductPage() {
             <div className="flex gap-4 flex-[2]">
               <ImageUploader
                 label="Utama"
-                file={img1}
-                onFileSelect={(file) => setImg1(file)}
+                src={formData.thumbnail}
+                onFileSelect={(src) => handleImageUpload(src, -1)}
               />
-              <ImageUploader
-                label="Depan"
-                file={img2}
-                onFileSelect={(file) => setImg2(file)}
-              />
-              <ImageUploader
-                label="Samping"
-                file={img3}
-                onFileSelect={(file) => setImg3(file)}
-              />
-              <ImageUploader
-                label="Belakang"
-                file={img4}
-                onFileSelect={(file) => setImg4(file)}
-              />
+              { formData.images.map((src, i) => <ImageUploader
+                label={`Foto ${i+1}`}
+                src={src}
+                key={i}
+                onFileSelect={(src) => handleImageUpload(src, i)}
+              />) }
             </div>
           </div>
         </div>
@@ -307,9 +332,7 @@ export default function NewProductPage() {
           />
         </div>
         <div className="flex gap-4 justify-end">
-          <button className="px-8 py-2 font-semibold rounded-lg">
-            Kembali
-          </button>
+          <Link className="px-8 py-2 font-semibold rounded-lg" href={'/products'}>Kembali</Link>
           <button
             type="button"
             className="px-8 py-2 bg-blue-600 text-white font-semibold rounded-lg"
@@ -324,23 +347,27 @@ export default function NewProductPage() {
 
 function ImageUploader({
   label,
-  file,
+  src,
   onFileSelect,
 }: {
   label: string;
-  file: File | null;
-  onFileSelect: (file: File | null) => void;
+  src: string;
+  onFileSelect: (src: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files && event.target.files[0];
-    onFileSelect(file || null);
+    if (file) {
+      onFileSelect(URL.createObjectURL(file));
+    }
+    
   };
 
   return (
     <button
-      className="flex-1 border border-dashed border-gray-400 rounded-lg aspect-square p-8 flex flex-col justify-center items-center gap-2 overflow-hidden"
+      type="button"
+      className="flex-1 border border-dashed border-gray-400 rounded-lg aspect-square flex flex-col justify-center items-center gap-2 overflow-hidden"
       onClick={() => inputRef.current?.click()}>
       <input
         type="file"
@@ -349,9 +376,9 @@ function ImageUploader({
         className="hidden"
         ref={inputRef}
       />
-      {file ? (
+      {src ? (
         <img
-          src={URL.createObjectURL(file)}
+          src={src}
           alt="label"
           className="object-cover w-full"></img>
       ) : (
