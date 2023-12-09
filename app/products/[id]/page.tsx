@@ -9,8 +9,6 @@ import { useEffect, useRef, useState } from "react";
 import Loader from "@/app/components/Loader";
 import { Product } from "@/app/types/product";
 
-export const dynamic = 'force-dynamic'
-
 export default function ProductDetailPage({
   params,
 }: {

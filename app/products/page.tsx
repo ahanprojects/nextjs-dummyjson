@@ -90,6 +90,7 @@ export default function ProductsPage() {
         <button>
           <Link
             href={"products/new"}
+            prefetch={false}
             className="px-3 py-2 bg-blue-600 rounded-md text-white font-medium">
             Tambah Produk
           </Link>
