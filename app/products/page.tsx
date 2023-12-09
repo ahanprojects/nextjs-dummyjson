@@ -23,8 +23,7 @@ type ProductResponse = {
 
 // API Configuration
 const DOMAIN = "https://dummyjson.com/products"
-const SKIP = 30
-const FILTER = `?select=id,title,description,price,category&limit=${SKIP}`
+const FILTER = `?select=id,title,description,price,category&limit=0`
 
 export default function ProductsPage() {
   const [search, setSearch] = useState('')

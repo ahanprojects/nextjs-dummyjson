@@ -22,7 +22,7 @@ type ProductForm = {
     images: string[]
 }
 
-export default function NewProductPage() {
+export default function ProductFormPage() {
   const [isPending, startTransition] = useTransition()
   
   const [formData, setFormData] = useState<ProductForm>({
@@ -102,7 +102,6 @@ export default function NewProductPage() {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value } = e.target;
-    console.log({ name, value });
     setFormData({ ...formData, [name]: value });
     setErrors({ ...errors, [name]: "" });
   }
@@ -149,7 +148,6 @@ export default function NewProductPage() {
   }
 
   function submitForm() {
-    console.log('submit')
     const data: Product = {
       ...formData,
       price: Number(formData.price),
