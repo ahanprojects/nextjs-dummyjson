@@ -1,10 +1,7 @@
-# Ambisius Lab Challenge - Farhan
-## Implementasi
-1. Seluruh requirements telah dibuat (App Router, TypeScript, Server Actions, TailwindCSS, Zod)
-2. Bonus points
-   - Additional Features: Search Bar, Search by category, Loader, Modal Popup for confirmation.
-   - Deployment on Vercel
-   - Docker (not tested)
+# Next.js dummyjson Web App
+
+UI Dashboard for dummyjson free API. Created using Next.js 14, Tailwind, Zod.
+
 ## Screenshots
 #### Product Page
 ![image](https://github.com/ahanprojects/9fc8e424-62f7-4435-b5ae-dff57501995e/assets/68496198/b4972d43-4f79-4cee-9335-e71bba0a177e)
